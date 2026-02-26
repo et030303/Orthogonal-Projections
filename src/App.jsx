@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Html, Line } from '@react-three/drei'
 import * as THREE from 'three'
@@ -8,6 +8,7 @@ export default function App() {
   const [angle, setAngle] = useState(30) 
   const [objHeight, setObjHeight] = useState(0.01)
   const [showHelper, setShowHelper] = useState(true)
+  const [isSnapped, setIsSnapped] = useState(true) // 바닥 밀착 상태 여부
 
   const [lineLen, setLineLen] = useState(6)
   const [circleRad, setCircleRad] = useState(3)
@@ -21,16 +22,7 @@ export default function App() {
 
   const is3D = ['cylinder', 'box', 'cone', 'pyramid'].includes(shape)
 
-  // --- [수정] 삼각비 무리수 텍스트 및 계산용 계수 반환 ---
-  const getCosInfo = (ang) => {
-    if (ang === 0) return { text: "1", coeff: 1, suffix: "" };
-    if (ang === 30) return { text: "√3/2", coeff: 0.5, suffix: "√3" };
-    if (ang === 45) return { text: "√2/2", coeff: 0.5, suffix: "√2" };
-    if (ang === 60) return { text: "1/2", coeff: 0.5, suffix: "" };
-    if (ang === 90) return { text: "0", coeff: 0, suffix: "" };
-    return { text: Math.cos((ang * Math.PI) / 180).toFixed(3), coeff: Math.cos((ang * Math.PI) / 180), suffix: "" };
-  }
-
+  // 🎯 바닥 밀착 높이 계산 함수
   const getFloorHeight = (currentAngle) => {
     const rad = (currentAngle * Math.PI) / 180;
     if (is3D) {
@@ -40,48 +32,64 @@ export default function App() {
     return 0.01;
   }
 
+  // 각도 변경 시 호출
   const handleAngleChange = (newAngle) => {
     setAngle(newAngle);
-    setObjHeight(getFloorHeight(newAngle));
+    // 🔥 [핵심] 밀착 상태일 때만 높이를 자동 계산해서 붙여줌
+    if (isSnapped) {
+      setObjHeight(getFloorHeight(newAngle));
+    }
   }
 
+  // 높이 슬라이더 수동 조절 시
+  const handleHeightChange = (newHeight) => {
+    setObjHeight(newHeight);
+    const snappedH = getFloorHeight(angle);
+    // 수동 조절 높이가 밀착 높이와 거의 같으면 밀착 상태로 간주, 아니면 해제
+    if (Math.abs(newHeight - snappedH) < 0.05) {
+      setIsSnapped(true);
+    } else {
+      setIsSnapped(false);
+    }
+  }
+
+  // 바닥 밀착 버튼 클릭 시
   const handleSnapToFloor = () => {
     setObjHeight(getFloorHeight(angle));
+    setIsSnapped(true);
   }
 
-  // --- [수정] 무리수 계산 마무리 로직 ---
+  // --- 무리수 계산용 정보 ---
+  const getCosInfo = (ang) => {
+    if (ang === 0) return { text: "1", coeff: 1, suffix: "" };
+    if (ang === 30) return { text: "√3/2", coeff: 0.5, suffix: "√3" };
+    if (ang === 45) return { text: "√2/2", coeff: 0.5, suffix: "√2" };
+    if (ang === 60) return { text: "1/2", coeff: 0.5, suffix: "" };
+    if (ang === 90) return { text: "0", coeff: 0, suffix: "" };
+    return { text: Math.cos((ang * Math.PI) / 180).toFixed(3), coeff: Math.cos((ang * Math.PI) / 180), suffix: "" };
+  }
+
   let originalLabel = '', step1 = '', step2 = '', approxResult = '', formula = '', symbol = '';
   const cosInfo = getCosInfo(angle);
   
   if (!is3D) {
     let baseVal = 0;
     let isPi = false;
-
-    if (shape === 'line') { 
-      symbol = 'l'; baseVal = lineLen; originalLabel = `${lineLen}`; formula = `l' = l × cos(θ)`;
-    } else if (shape === 'circle') { 
-      symbol = 'S'; baseVal = Math.pow(circleRad, 2); isPi = true; originalLabel = `${baseVal}π`; formula = `S' = S × cos(θ)`;
-    } else if (shape === 'rect') { 
-      symbol = 'S'; baseVal = rectW * rectH; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`;
-    } else if (shape === 'triangle') { 
-      symbol = 'S'; baseVal = (rectW * rectH) / 2; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`;
-    }
-
+    if (shape === 'line') { symbol = 'l'; baseVal = lineLen; originalLabel = `${lineLen}`; formula = `l' = l × cos(θ)`; }
+    else if (shape === 'circle') { symbol = 'S'; baseVal = Math.pow(circleRad, 2); isPi = true; originalLabel = `${baseVal}π`; formula = `S' = S × cos(θ)`; }
+    else if (shape === 'rect') { symbol = 'S'; baseVal = rectW * rectH; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`; }
+    else if (shape === 'triangle') { symbol = 'S'; baseVal = (rectW * rectH) / 2; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`; }
     step1 = `${originalLabel} × ${cosInfo.text}`;
-    
-    // 계산 마무리 (유리수 부분 곱하기)
     const finalCoeff = baseVal * cosInfo.coeff;
     step2 = `${finalCoeff === 1 && cosInfo.suffix ? "" : finalCoeff}${cosInfo.suffix}${isPi ? "π" : ""}`;
-    
-    // 근삿값
     approxResult = (baseVal * cosValue).toFixed(2) + (isPi ? "π" : "");
   }
 
   const triangleShape = useMemo(() => {
-    const s = new THREE.Shape()
+    const s = new THREE.Shape();
     s.moveTo(-rectW / 2, 0); s.lineTo(rectW / 2, 0); s.lineTo(0, rectH);
-    return s
-  }, [rectW, rectH])
+    return s;
+  }, [rectW, rectH]);
 
   const helperLen = shape === 'circle' ? circleRad * 2 : shape === 'line' ? lineLen : rectH;
 
@@ -94,8 +102,7 @@ export default function App() {
         addLine(-rectW / 2, objHeight + rectH * sinValue, -rectH * cosValue); 
         addLine(rectW / 2, objHeight + rectH * sinValue, -rectH * cosValue);  
       }
-      addLine(-rectW / 2, objHeight, 0); 
-      addLine(rectW / 2, objHeight, 0);  
+      addLine(-rectW / 2, objHeight, 0); addLine(rectW / 2, objHeight, 0);  
     } else if (shape === 'circle') {
       addLine(0, objHeight + (circleRad * 2) * sinValue, -(circleRad * 2) * cosValue); 
       addLine(-circleRad, objHeight + circleRad * sinValue, -circleRad * cosValue); 
@@ -114,17 +121,10 @@ export default function App() {
         
         <div style={{ marginBottom: '15px' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>1. 도형 선택</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '5px', marginBottom: '10px' }}>
-            <button onClick={() => setShape('line')} style={btnStyle(shape === 'line')}>선분</button>
-            <button onClick={() => setShape('circle')} style={btnStyle(shape === 'circle')}>원</button>
-            <button onClick={() => setShape('rect')} style={btnStyle(shape === 'rect')}>사각</button>
-            <button onClick={() => setShape('triangle')} style={btnStyle(shape === 'triangle')}>삼각</button>
-          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '5px' }}>
-            <button onClick={() => setShape('cylinder')} style={btnStyle3D(shape === 'cylinder')}>원기둥</button>
-            <button onClick={() => setShape('box')} style={btnStyle3D(shape === 'box')}>사각기둥</button>
-            <button onClick={() => setShape('cone')} style={btnStyle3D(shape === 'cone')}>원뿔</button>
-            <button onClick={() => setShape('pyramid')} style={btnStyle3D(shape === 'pyramid')}>사각뿔</button>
+            {['line', 'circle', 'rect', 'triangle'].map(s => (
+              <button key={s} onClick={() => {setShape(s); setIsSnapped(true); setObjHeight(getFloorHeight(angle));}} style={btnStyle(shape === s)}>{s === 'line' ? '선분' : s === 'circle' ? '원' : s === 'rect' ? '사각' : '삼각'}</button>
+            ))}
           </div>
         </div>
 
@@ -138,10 +138,13 @@ export default function App() {
           <input type="range" min="0" max="90" step="1" value={angle} onChange={(e) => handleAngleChange(Number(e.target.value))} style={{ width: '100%', accentColor: '#2980b9' }} />
         </div>
 
-        <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '10px', border: '1px solid #dfe4ea' }}>
-          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>3. 부양 높이 조절: <span style={{color:'#2980b9'}}>{objHeight.toFixed(2)}</span></p>
-          <input type="range" min="0" max="10" step="0.1" value={objHeight} onChange={(e) => setObjHeight(Number(e.target.value))} style={{ width: '100%', marginBottom: '10px', accentColor: '#27ae60' }} />
-          <button onClick={handleSnapToFloor} style={{ width: '100%', padding: '10px', backgroundColor: '#f39c12', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', color: 'white' }}>👇 현재 각도에서 바닥에 밀착</button>
+        <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: isSnapped ? '#e3f2fd' : '#f8f9fa', borderRadius: '10px', border: isSnapped ? '1px solid #2196f3' : '1px solid #dfe4ea' }}>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>
+            3. 부양 높이 조절: <span style={{color:'#2980b9'}}>{objHeight.toFixed(2)}</span>
+            {isSnapped && <span style={{marginLeft: '10px', fontSize: '11px', color: '#2196f3'}}>(바닥 밀착됨)</span>}
+          </p>
+          <input type="range" min="0" max="10" step="0.1" value={objHeight} onChange={(e) => handleHeightChange(Number(e.target.value))} style={{ width: '100%', marginBottom: '10px', accentColor: '#27ae60' }} />
+          <button onClick={handleSnapToFloor} style={{ width: '100%', padding: '10px', backgroundColor: '#f39c12', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', color: 'white' }}>👇 바닥에 밀착시키기</button>
         </div>
 
         <div style={{ marginBottom: '10px' }}>
@@ -151,7 +154,6 @@ export default function App() {
           </label>
         </div>
 
-        {/* [최종 완성] 무리수 계산 프로세스 창 */}
         <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '10px', borderLeft: is3D ? '5px solid #9b59b6' : '5px solid #3498db', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           {!is3D ? (
             <>
@@ -160,19 +162,14 @@ export default function App() {
                 <code style={{ fontSize: '15px', color: '#e74c3c', fontWeight: 'bold' }}>{formula}</code>
               </div>
               <p style={{ margin: '0 0 8px 0', color: '#7f8c8d', fontSize: '13px' }}>원래 값 ({symbol}) = <span style={{color:'#2c3e50', fontWeight:'bold'}}>{originalLabel}</span></p>
-              
               <div style={{ padding: '10px', backgroundColor: '#eef2f7', borderRadius: '8px', border: '1px solid #d1d8e0' }}>
                 <div style={{ fontSize: '13px', color: '#2980b9', fontWeight: 'bold', marginBottom: '4px' }}>정사영 계산 과정 ({symbol}')</div>
                 <div style={{ fontSize: '15px', color: '#2c3e50' }}>① {step1}</div>
                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e67e22', margin: '4px 0' }}>② = {step2}</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#27ae60', borderTop: '1px solid #d1d8e0', paddingTop: '4px' }}>
-                  ≈ {approxResult}
-                </div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#27ae60', borderTop: '1px solid #d1d8e0', paddingTop: '4px' }}>≈ {approxResult}</div>
               </div>
             </>
-          ) : (
-            <p style={{ margin: 0, color: '#8e44ad', fontSize: '13px', fontWeight: 'bold' }}>[입체도형 모드]</p>
-          )}
+          ) : ( <p style={{ margin: 0, color: '#8e44ad', fontSize: '13px', fontWeight: 'bold' }}>[입체도형 모드]</p> )}
         </div>
       </div>
 
@@ -183,7 +180,6 @@ export default function App() {
         <OrbitControls target={[0, 0, 0]} />
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[50, 50]} /><meshStandardMaterial color="#dfe4ea" /></mesh>
         <gridHelper args={[50, 50, '#a4b0be', '#ced6e0']} />
-
         {showHelper && !is3D && (
           <group>
             {getProjectionLines().map((pts, idx) => (
@@ -206,7 +202,6 @@ export default function App() {
             )}
           </group>
         )}
-
         <group position={[0, objHeight, 0]} rotation={[angleRad, 0, 0]}>
           {!is3D && showHelper && (
             <group>
@@ -218,14 +213,6 @@ export default function App() {
           {shape === 'circle' && <mesh castShadow position={[0, 0, -circleRad]}><cylinderGeometry args={[circleRad, circleRad, 0.05, 32]} /><meshStandardMaterial color="#3498db" transparent opacity={0.8} /></mesh>}
           {shape === 'rect' && <mesh castShadow position={[0, 0, -rectH/2]}><boxGeometry args={[rectW, 0.05, rectH]} /><meshStandardMaterial color="#3498db" transparent opacity={0.8} /></mesh>}
           {shape === 'triangle' && <mesh castShadow rotation={[-Math.PI/2, 0, 0]}><extrudeGeometry args={[triangleShape, { depth: 0.05, bevelEnabled: false }]} /><meshStandardMaterial color="#3498db" transparent opacity={0.8} /></mesh>}
-          {is3D && (
-            <mesh castShadow position={[0, rectH/2, 0]} rotation={shape === 'pyramid' ? [0, Math.PI/4, 0] : [0, 0, 0]}>
-              {shape === 'cylinder' && <cylinderGeometry args={[circleRad, circleRad, rectH, 32]} />}
-              {shape === 'box' && <boxGeometry args={[rectW, rectH, objDepth]} />}
-              {(shape === 'cone' || shape === 'pyramid') && <coneGeometry args={[circleRad, rectH, shape === 'cone' ? 32 : 4]} />}
-              <meshStandardMaterial color="#9b59b6" transparent opacity={0.8} />
-            </mesh>
-          )}
         </group>
       </Canvas>
     </div>
