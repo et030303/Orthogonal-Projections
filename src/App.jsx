@@ -6,7 +6,7 @@ import * as THREE from 'three'
 export default function App() {
   const [shape, setShape] = useState('circle')
   const [angle, setAngle] = useState(30) 
-  const [objHeight, setObjHeight] = useState(0.01) // 초기값은 밀착
+  const [objHeight, setObjHeight] = useState(0.01)
   const [showHelper, setShowHelper] = useState(true)
 
   const [lineLen, setLineLen] = useState(6)
@@ -21,7 +21,6 @@ export default function App() {
 
   const is3D = ['cylinder', 'box', 'cone', 'pyramid'].includes(shape)
 
-  // 🎯 바닥 밀착 높이 계산 함수
   const getFloorHeight = (currentAngle) => {
     const rad = (currentAngle * Math.PI) / 180;
     if (is3D) {
@@ -31,48 +30,44 @@ export default function App() {
     return 0.01;
   }
 
-  // 각도 변경 시 호출
   const handleAngleChange = (newAngle) => {
     setAngle(newAngle);
-    setObjHeight(getFloorHeight(newAngle)); // 각도 변경 시 일단 바닥에 붙여줌
+    setObjHeight(getFloorHeight(newAngle));
   }
 
-  // 바닥 밀착 버튼 클릭 시
   const handleSnapToFloor = () => {
     setObjHeight(getFloorHeight(angle));
   }
 
-  // --- [수정된 부분] 정사영 공식 및 심볼 로직 ---
-  let originalValue = 0, valueLabel = '', symbol = '', formula = '';
+  // --- [수정] 고등 교육용 파이(π) 표기 로직 ---
+  let originalLabel = '', projectedLabel = '', formula = '', symbol = '';
   
   if (!is3D) {
-    if (shape === 'line') { 
-      originalValue = lineLen; 
-      valueLabel = '길이'; 
+    if (shape === 'line') {
       symbol = 'l';
+      originalLabel = `${lineLen}`;
+      projectedLabel = `${(lineLen * cosValue).toFixed(2)}`;
       formula = `l' = l × cos(θ)`;
-    }
-    else if (shape === 'circle') { 
-      originalValue = Math.PI * Math.pow(circleRad, 2); 
-      valueLabel = '넓이'; 
+    } else if (shape === 'circle') {
       symbol = 'S';
+      const rSq = Math.pow(circleRad, 2);
+      originalLabel = `${rSq}π`; // 예: 9π
+      projectedLabel = `${(rSq * cosValue).toFixed(2)}π`; // 예: 7.79π
       formula = `S' = S × cos(θ)`;
-    }
-    else if (shape === 'rect') { 
-      originalValue = rectW * rectH; 
-      valueLabel = '넓이'; 
+    } else if (shape === 'rect') {
       symbol = 'S';
+      const area = rectW * rectH;
+      originalLabel = `${area}`;
+      projectedLabel = `${(area * cosValue).toFixed(2)}`;
       formula = `S' = S × cos(θ)`;
-    }
-    else if (shape === 'triangle') { 
-      originalValue = (rectW * rectH) / 2; 
-      valueLabel = '넓이'; 
+    } else if (shape === 'triangle') {
       symbol = 'S';
+      const area = (rectW * rectH) / 2;
+      originalLabel = `${area}`;
+      projectedLabel = `${(area * cosValue).toFixed(2)}`;
       formula = `S' = S × cos(θ)`;
     }
   }
-  const projectedValue = (originalValue * cosValue).toFixed(2);
-  const displayOriginal = originalValue.toFixed(2);
 
   const triangleShape = useMemo(() => {
     const s = new THREE.Shape()
@@ -137,7 +132,7 @@ export default function App() {
           <input type="range" min="0" max="90" step="1" value={angle} onChange={(e) => handleAngleChange(Number(e.target.value))} style={{ width: '100%', accentColor: '#2980b9' }} />
         </div>
 
-        {/* 3. 높이 조절 슬라이더 */}
+        {/* 3. 높이 조절 */}
         <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '10px', border: '1px solid #dfe4ea' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>3. 부양 높이 조절: <span style={{color:'#2980b9'}}>{objHeight.toFixed(2)}</span></p>
           <input type="range" min="0" max="10" step="0.1" value={objHeight} onChange={(e) => setObjHeight(Number(e.target.value))} style={{ width: '100%', marginBottom: '10px', accentColor: '#27ae60' }} />
@@ -151,21 +146,23 @@ export default function App() {
           </label>
         </div>
 
-        {/* [수정] 정사영 계산 결과 표시창 */}
+        {/* [수정] 결과 표시창: 파이(π) 강조 버전 */}
         <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '10px', borderLeft: is3D ? '5px solid #9b59b6' : '5px solid #3498db', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           {!is3D ? (
             <>
               <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px dashed #eee' }}>
                 <span style={{ fontSize: '12px', color: '#95a5a6', fontWeight: 'bold' }}>정사영 공식: </span>
-                <code style={{ fontSize: '14px', color: '#e74c3c', fontWeight: 'bold', backgroundColor: '#fff5f5', padding: '2px 6px', borderRadius: '4px' }}>
+                <code style={{ fontSize: '15px', color: '#e74c3c', fontWeight: 'bold', backgroundColor: '#fff5f5', padding: '2px 6px', borderRadius: '4px' }}>
                   {formula}
                 </code>
               </div>
-              <p style={{ margin: '0 0 5px 0', color: '#7f8c8d', fontSize: '13px' }}>원래 {valueLabel} ({symbol}): {displayOriginal}</p>
-              <h3 style={{ margin: 0, color: '#2980b9', fontSize: '17px' }}>
-                {symbol}' = {displayOriginal} × cos({angle}°) = <span style={{color: '#27ae60'}}>{projectedValue}</span>
+              <p style={{ margin: '0 0 5px 0', color: '#7f8c8d', fontSize: '13px' }}>원래 값 ({symbol}): <span style={{color:'#2c3e50', fontWeight:'bold'}}>{originalLabel}</span></p>
+              <h3 style={{ margin: 0, color: '#2980b9', fontSize: '18px' }}>
+                {symbol}' = {originalLabel} × cos({angle}°)
               </h3>
-              <p style={{ margin: '5px 0 0 0', fontSize: '11px', color: '#bdc3c7' }}>* cos({angle}°) ≈ {cosValue.toFixed(4)}</p>
+              <div style={{ marginTop: '5px', padding: '8px', backgroundColor: '#eef2f7', borderRadius: '5px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>결과 값 ≈ <span style={{color: '#27ae60', fontSize:'20px'}}>{projectedLabel}</span></span>
+              </div>
             </>
           ) : (
             <p style={{ margin: 0, color: '#8e44ad', fontSize: '13px', fontWeight: 'bold' }}>[입체도형 모드] 높이 조절이 자유롭습니다.</p>
@@ -179,11 +176,9 @@ export default function App() {
         <directionalLight position={[0, 20, 0]} intensity={2.0} castShadow />
         <OrbitControls target={[0, 0, 0]} />
 
-        {/* 바닥 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[50, 50]} /><meshStandardMaterial color="#dfe4ea" /></mesh>
         <gridHelper args={[50, 50, '#a4b0be', '#ced6e0']} />
 
-        {/* 보조선 표시 */}
         {showHelper && !is3D && (
           <group>
             {getProjectionLines().map((pts, idx) => (
