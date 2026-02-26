@@ -21,6 +21,16 @@ export default function App() {
 
   const is3D = ['cylinder', 'box', 'cone', 'pyramid'].includes(shape)
 
+  // --- [추가] 특수각 무리수 표현 함수 ---
+  const getCosText = (ang) => {
+    if (ang === 0) return "1";
+    if (ang === 30) return "√3/2";
+    if (ang === 45) return "√2/2";
+    if (ang === 60) return "1/2";
+    if (ang === 90) return "0";
+    return Math.cos((ang * Math.PI) / 180).toFixed(3);
+  }
+
   const getFloorHeight = (currentAngle) => {
     const rad = (currentAngle * Math.PI) / 180;
     if (is3D) {
@@ -39,32 +49,37 @@ export default function App() {
     setObjHeight(getFloorHeight(angle));
   }
 
-  // --- [수정] 고등 교육용 파이(π) 표기 로직 ---
-  let originalLabel = '', projectedLabel = '', formula = '', symbol = '';
+  // --- [수정] 무리수 및 파이 포함 정밀 수식 로직 ---
+  let originalLabel = '', exactResult = '', approxResult = '', formula = '', symbol = '';
+  const cosText = getCosText(angle);
   
   if (!is3D) {
     if (shape === 'line') {
       symbol = 'l';
       originalLabel = `${lineLen}`;
-      projectedLabel = `${(lineLen * cosValue).toFixed(2)}`;
+      exactResult = `${lineLen} × ${cosText}`;
+      approxResult = (lineLen * cosValue).toFixed(2);
       formula = `l' = l × cos(θ)`;
     } else if (shape === 'circle') {
       symbol = 'S';
       const rSq = Math.pow(circleRad, 2);
-      originalLabel = `${rSq}π`; // 예: 9π
-      projectedLabel = `${(rSq * cosValue).toFixed(2)}π`; // 예: 7.79π
+      originalLabel = `${rSq}π`;
+      exactResult = `${rSq}π × ${cosText}`;
+      approxResult = `${(rSq * cosValue).toFixed(2)}π`;
       formula = `S' = S × cos(θ)`;
     } else if (shape === 'rect') {
       symbol = 'S';
       const area = rectW * rectH;
       originalLabel = `${area}`;
-      projectedLabel = `${(area * cosValue).toFixed(2)}`;
+      exactResult = `${area} × ${cosText}`;
+      approxResult = (area * cosValue).toFixed(2);
       formula = `S' = S × cos(θ)`;
     } else if (shape === 'triangle') {
       symbol = 'S';
       const area = (rectW * rectH) / 2;
       originalLabel = `${area}`;
-      projectedLabel = `${(area * cosValue).toFixed(2)}`;
+      exactResult = `${area} × ${cosText}`;
+      approxResult = (area * cosValue).toFixed(2);
       formula = `S' = S × cos(θ)`;
     }
   }
@@ -146,26 +161,26 @@ export default function App() {
           </label>
         </div>
 
-        {/* [수정] 결과 표시창: 파이(π) 강조 버전 */}
+        {/* [최종 수정] 무리수 결과창 */}
         <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '10px', borderLeft: is3D ? '5px solid #9b59b6' : '5px solid #3498db', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           {!is3D ? (
             <>
               <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px dashed #eee' }}>
-                <span style={{ fontSize: '12px', color: '#95a5a6', fontWeight: 'bold' }}>정사영 공식: </span>
-                <code style={{ fontSize: '15px', color: '#e74c3c', fontWeight: 'bold', backgroundColor: '#fff5f5', padding: '2px 6px', borderRadius: '4px' }}>
-                  {formula}
-                </code>
+                <span style={{ fontSize: '12px', color: '#95a5a6', fontWeight: 'bold' }}>공식: </span>
+                <code style={{ fontSize: '15px', color: '#e74c3c', fontWeight: 'bold' }}>{formula}</code>
               </div>
               <p style={{ margin: '0 0 5px 0', color: '#7f8c8d', fontSize: '13px' }}>원래 값 ({symbol}): <span style={{color:'#2c3e50', fontWeight:'bold'}}>{originalLabel}</span></p>
-              <h3 style={{ margin: 0, color: '#2980b9', fontSize: '18px' }}>
-                {symbol}' = {originalLabel} × cos({angle}°)
-              </h3>
-              <div style={{ marginTop: '5px', padding: '8px', backgroundColor: '#eef2f7', borderRadius: '5px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>결과 값 ≈ <span style={{color: '#27ae60', fontSize:'20px'}}>{projectedLabel}</span></span>
+              
+              <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f1f2f6', borderRadius: '8px' }}>
+                <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#2980b9', fontWeight: 'bold' }}>정확한 값 ({symbol}')</p>
+                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>= {exactResult}</div>
+                <div style={{ marginTop: '5px', fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>
+                  ≈ {approxResult}
+                </div>
               </div>
             </>
           ) : (
-            <p style={{ margin: 0, color: '#8e44ad', fontSize: '13px', fontWeight: 'bold' }}>[입체도형 모드] 높이 조절이 자유롭습니다.</p>
+            <p style={{ margin: 0, color: '#8e44ad', fontSize: '13px', fontWeight: 'bold' }}>[입체도형 모드]</p>
           )}
         </div>
       </div>
