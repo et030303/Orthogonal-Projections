@@ -10,6 +10,7 @@ export default function App() {
   const [showHelper, setShowHelper] = useState(true)
   const [isSnapped, setIsSnapped] = useState(true)
 
+  // --- [복구] 도형 치수 상태 ---
   const [lineLen, setLineLen] = useState(6)
   const [circleRad, setCircleRad] = useState(3)
   const [rectW, setRectW] = useState(6)
@@ -22,7 +23,6 @@ export default function App() {
 
   const is3D = ['cylinder', 'box', 'cone', 'pyramid'].includes(shape)
 
-  // 🎯 바닥 밀착 높이 계산 함수
   const getFloorHeight = (currentAngle, currentShape) => {
     const rad = (currentAngle * Math.PI) / 180;
     if (['cylinder', 'cone'].includes(currentShape)) return circleRad * Math.sin(rad);
@@ -54,7 +54,6 @@ export default function App() {
     setIsSnapped(true);
   }
 
-  // 📐 무리수 표현 및 계산 마무리 로직
   const getCosInfo = (ang) => {
     if (ang === 0) return { text: "1", coeff: 1, suffix: "" };
     if (ang === 30) return { text: "√3/2", coeff: 0.5, suffix: "√3" };
@@ -73,7 +72,6 @@ export default function App() {
     else if (shape === 'circle') { symbol = 'S'; baseVal = Math.pow(circleRad, 2); isPi = true; originalLabel = `${baseVal}π`; formula = `S' = S × cos(θ)`; }
     else if (shape === 'rect') { symbol = 'S'; baseVal = rectW * rectH; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`; }
     else if (shape === 'triangle') { symbol = 'S'; baseVal = (rectW * rectH) / 2; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`; }
-    
     step1 = `${originalLabel} × ${cosInfo.text}`;
     const finalCoeff = baseVal * cosInfo.coeff;
     step2 = `${finalCoeff === 1 && cosInfo.suffix ? "" : finalCoeff}${cosInfo.suffix}${isPi ? "π" : ""}`;
@@ -111,9 +109,10 @@ export default function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#f1f2f6', color: '#2f3542', fontFamily: 'sans-serif' }}>
       
-      <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.95)', padding: '20px', borderRadius: '15px', minWidth: '360px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}>
-        <h2 style={{ marginTop: 0, color: '#2980b9', fontSize: '20px' }}>📘 정사영 실험실 (수직투영 모드)</h2>
+      <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.95)', padding: '20px', borderRadius: '15px', minWidth: '380px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}>
+        <h2 style={{ marginTop: 0, color: '#2980b9', fontSize: '20px' }}>📘 정사영 실험실 (이면각 측정 모드)</h2>
         
+        {/* 1. 도형 선택 */}
         <div style={{ marginBottom: '15px' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>1. 도형 선택</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '5px', marginBottom:'5px' }}>
@@ -128,8 +127,32 @@ export default function App() {
           </div>
         </div>
 
+        {/* [복구] 2. 도형 상세 수치 조절 */}
+        <div style={{ marginBottom: '15px', padding: '12px', backgroundColor: '#fdf9f2', borderRadius: '10px', border: '1px solid #f39c12' }}>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#e67e22', fontWeight: 'bold' }}>2. 치수 조절</p>
+          {shape === 'line' && <>
+            <label style={{fontSize:'12px'}}>길이: {lineLen}</label>
+            <input type="range" min="1" max="15" step="0.5" value={lineLen} onChange={(e)=>setLineLen(Number(e.target.value))} style={{width:'100%'}} />
+          </>}
+          {['circle', 'cylinder', 'cone'].includes(shape) && <>
+            <label style={{fontSize:'12px'}}>반지름: {circleRad}</label>
+            <input type="range" min="1" max="8" step="0.1" value={circleRad} onChange={(e)=>setCircleRad(Number(e.target.value))} style={{width:'100%'}} />
+          </>}
+          {['rect', 'triangle', 'box', 'pyramid'].includes(shape) && <>
+            <label style={{fontSize:'12px'}}>가로: {rectW}</label>
+            <input type="range" min="1" max="12" step="0.5" value={rectW} onChange={(e)=>setRectW(Number(e.target.value))} style={{width:'100%'}} />
+            <label style={{fontSize:'12px', marginTop:'5px', display:'block'}}>세로(높이): {rectH}</label>
+            <input type="range" min="1" max="12" step="0.5" value={rectH} onChange={(e)=>setRectH(Number(e.target.value))} style={{width:'100%'}} />
+          </>}
+          {['box', 'cylinder'].includes(shape) && <>
+            <label style={{fontSize:'12px', marginTop:'5px', display:'block'}}>두께/깊이: {objDepth}</label>
+            <input type="range" min="1" max="10" step="0.5" value={objDepth} onChange={(e)=>setObjDepth(Number(e.target.value))} style={{width:'100%'}} />
+          </>}
+        </div>
+
+        {/* 3. 각도 조절 */}
         <div style={{ marginBottom: '15px' }}>
-          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>2. 각도 설정 (θ): <span style={{color:'#e67e22'}}>{angle}°</span></p>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>3. 각도 설정 (θ): <span style={{color:'#e67e22'}}>{angle}°</span></p>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
             {[0, 30, 45, 60, 90].map(v => (
               <button key={v} onClick={() => handleAngleChange(v)} style={{ flex: 1, margin: '0 2px', padding: '5px 0', borderRadius: '4px', border: '1px solid #3498db', backgroundColor: angle === v ? '#3498db' : 'white', color: angle === v ? 'white' : '#3498db', fontWeight: 'bold', cursor: 'pointer' }}>{v}°</button>
@@ -138,22 +161,23 @@ export default function App() {
           <input type="range" min="0" max="90" step="1" value={angle} onChange={(e) => handleAngleChange(Number(e.target.value))} style={{ width: '100%', accentColor: '#2980b9' }} />
         </div>
 
+        {/* 4. 높이 조절 */}
         <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: isSnapped ? '#e3f2fd' : '#f8f9fa', borderRadius: '10px', border: isSnapped ? '1px solid #2196f3' : '1px solid #dfe4ea' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>
-            3. 부양 높이 조절: <span style={{color:'#2980b9'}}>{objHeight.toFixed(2)}</span>
-            {isSnapped && <span style={{marginLeft: '10px', fontSize: '11px', color: '#2196f3'}}> (자동 접점 보정)</span>}
+            4. 부양 높이: <span style={{color:'#2980b9'}}>{objHeight.toFixed(2)}</span>
           </p>
           <input type="range" min="0" max="10" step="0.1" value={objHeight} onChange={(e) => handleHeightChange(Number(e.target.value))} style={{ width: '100%', marginBottom: '10px', accentColor: '#27ae60' }} />
-          <button onClick={handleSnapToFloor} style={{ width: '100%', padding: '10px', backgroundColor: '#f39c12', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', color: 'white' }}>👇 바닥에 밀착시키기</button>
+          <button onClick={handleSnapToFloor} style={{ width: '100%', padding: '10px', backgroundColor: '#f39c12', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', color: 'white' }}>👇 바닥에 밀착</button>
         </div>
 
         <div style={{ marginBottom: '10px' }}>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: '#2980b9', fontSize: '14px' }}>
             <input type="checkbox" checked={showHelper} onChange={(e) => setShowHelper(e.target.checked)} style={{ transform: 'scale(1.2)', marginRight: '10px' }} />
-            📐 보조선 및 직각기호 표시
+            📐 이면각 보조선 및 직각기호
           </label>
         </div>
 
+        {/* 계산 결과창 */}
         <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '10px', borderLeft: is3D ? '5px solid #9b59b6' : '5px solid #3498db', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           {!is3D ? (
             <>
@@ -161,9 +185,8 @@ export default function App() {
                 <span style={{ fontSize: '12px', color: '#95a5a6', fontWeight: 'bold' }}>공식: </span>
                 <code style={{ fontSize: '15px', color: '#e74c3c', fontWeight: 'bold' }}>{formula}</code>
               </div>
-              <p style={{ margin: '0 0 8px 0', color: '#7f8c8d', fontSize: '13px' }}>원래 값 ({symbol}) = <span style={{color:'#2c3e50', fontWeight:'bold'}}>{originalLabel}</span></p>
+              <p style={{ margin: '0 0 8px 0', color: '#7f8c8d', fontSize: '13px' }}>원래 값 = <span style={{color:'#2c3e50', fontWeight:'bold'}}>{originalLabel}</span></p>
               <div style={{ padding: '10px', backgroundColor: '#eef2f7', borderRadius: '8px', border: '1px solid #d1d8e0' }}>
-                <div style={{ fontSize: '13px', color: '#2980b9', fontWeight: 'bold', marginBottom: '4px' }}>정사영 계산 과정 ({symbol}')</div>
                 <div style={{ fontSize: '15px', color: '#2c3e50' }}>① {step1}</div>
                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e67e22', margin: '4px 0' }}>② = {step2}</div>
                 <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#27ae60', borderTop: '1px solid #d1d8e0', paddingTop: '4px' }}>≈ {approxResult}</div>
@@ -173,30 +196,15 @@ export default function App() {
         </div>
       </div>
 
-      <Canvas shadows camera={{ position: [12, 12, 15], fov: 45 }}>
+      <Canvas shadows camera={{ position: [15, 15, 20], fov: 45 }}>
         <color attach="background" args={['#f1f2f6']} />
         <ambientLight intensity={0.5} />
-        
-        {/* 🔥 수직 광원 설정: x=0, z=0 위치에서 정수직 하강 */}
-        <directionalLight 
-          position={[0, 30, 0]} 
-          intensity={2.2} 
-          castShadow 
-          shadow-mapSize={[4096, 4096]} // 그림자 해상도를 최대치로
-        >
-          <orthographicCamera 
-            attach="shadow-camera" 
-            args={[-30, 30, 30, -30, 0.1, 60]} // 그림자 영역을 아주 넉넉하게 설정
-          />
+        <directionalLight position={[0, 40, 0]} intensity={2.2} castShadow shadow-mapSize={[2048, 2048]}>
+          <orthographicCamera attach="shadow-camera" args={[-30, 30, 30, -30, 0.1, 70]} />
         </directionalLight>
 
         <OrbitControls target={[0, 0, 0]} />
-        
-        {/* 바닥면 (그림자 수신기) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[100, 100]} />
-          <meshStandardMaterial color="#dfe4ea" />
-        </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[100, 100]} /><meshStandardMaterial color="#dfe4ea" /></mesh>
         <gridHelper args={[50, 50, '#a4b0be', '#ced6e0']} />
         
         <group position={[0, objHeight, 0]} rotation={[angleRad, 0, 0]}>
@@ -208,7 +216,6 @@ export default function App() {
               {shape === 'triangle' && <mesh castShadow rotation={[-Math.PI/2, 0, 0]}><extrudeGeometry args={[triangleShape, { depth: 0.05, bevelEnabled: false }]} /><meshStandardMaterial color="#3498db" transparent opacity={0.8} /></mesh>}
             </>
           )}
-
           {is3D && (
             <mesh castShadow position={[0, rectH/2, 0]} rotation={shape === 'pyramid' ? [0, Math.PI/4, 0] : [0, 0, 0]}>
               {shape === 'cylinder' && <cylinderGeometry args={[circleRad, circleRad, rectH, 32]} />}
@@ -219,16 +226,34 @@ export default function App() {
           )}
         </group>
 
-        {showHelper && !is3D && (
+        {showHelper && (
           <group>
-            {getProjectionLines().map((pts, idx) => (
+            {/* 투영 보조선 (수직 점선) */}
+            {!is3D && getProjectionLines().map((pts, idx) => (
               <Line key={idx} points={pts} color="#2f3542" lineWidth={1.5} dashed dashSize={0.2} gapSize={0.15} />
             ))}
-            <Line points={[[0, 0.02, 0], [0, 0.02, -helperLen * cosValue]]} color="#e67e22" lineWidth={4} />
-            {objHeight <= 0.3 && angle > 0 && (
+
+            {/* 🔥 이면각 정의 수직선 (L자) */}
+            {/* 1. 바닥 위의 수직선 (주황색) */}
+            <Line points={[[0, 0.02, 0], [0, 0.02, -helperLen * cosValue]]} color="#e67e22" lineWidth={5} />
+            {/* 2. 바닥에서 공중 도형까지의 높이 보조선 */}
+            <Line points={[[0, 0.02, -helperLen * cosValue], [0, objHeight + helperLen * sinValue, -helperLen * cosValue]]} color="#e67e22" lineWidth={2} dashed />
+            
+            {/* 3. 도형 평면 위의 수직선 (녹색) */}
+            <group position={[0, objHeight, 0]} rotation={[angleRad, 0, 0]}>
+              <Line points={[[0, 0.05, 0], [0, 0.05, -helperLen]]} color="#27ae60" lineWidth={5} />
+              {/* 도형 위 직각 기호 */}
+              <Line points={[[0.5, 0.05, 0], [0.5, 0.05, -0.5], [0, 0.05, -0.5]]} color="#27ae60" lineWidth={3} />
+            </group>
+
+            {/* 바닥 위 직각 기호 */}
+            <Line points={[[0.5, 0.02, 0], [0.5, 0.02, -0.5], [0, 0.02, -0.5]]} color="#e67e22" lineWidth={3} />
+
+            {/* 각도 텍스트 호(Arc) */}
+            {angle > 0 && (
               <group>
-                <Line points={Array.from({length:25}, (_,i)=> [0, objHeight + 2*Math.sin((i/24)*angleRad), -2*Math.cos((i/24)*angleRad)])} color="#d35400" lineWidth={5} />
-                <Html position={[0, 2.8 * Math.sin(angleRad/2), -2.8 * Math.cos(angleRad/2)]} center>
+                <Line points={Array.from({length:25}, (_,i)=> [0, objHeight + 3*Math.sin((i/24)*angleRad), -3*Math.cos((i/24)*angleRad)])} color="#d35400" lineWidth={5} />
+                <Html position={[0, objHeight + 3.5 * Math.sin(angleRad/2), -3.5 * Math.cos(angleRad/2)]} center>
                   <div style={{color:'#d35400', fontSize:'22px', fontWeight:'900', textShadow:'2px 2px white'}}>θ = {angle}°</div>
                 </Html>
               </group>
