@@ -23,32 +23,29 @@ export default function App() {
 
   const is3D = ['cylinder', 'box', 'cone', 'pyramid'].includes(shape)
 
-  // 바닥 밀착 높이 계산 (이제 3D 도형들도 모서리가 축이 되므로 들뜸 보정 없이 0.01로 고정 가능)
-  const getFloorHeight = (currentAngle, currentShape) => {
-    return 0.01;
-  }
+  // 바닥 밀착 높이 (모두 모서리를 축으로 회전하므로 0.01 고정)
+  const getFloorHeight = () => 0.01;
 
   const handleAngleChange = (newAngle) => {
     setAngle(newAngle);
-    if (isSnapped) setObjHeight(getFloorHeight(newAngle, shape));
+    if (isSnapped) setObjHeight(getFloorHeight());
   }
 
   const handleHeightChange = (newHeight) => {
     setObjHeight(newHeight);
-    const snappedH = getFloorHeight(angle, shape);
+    const snappedH = getFloorHeight();
     if (Math.abs(newHeight - snappedH) < 0.1) setIsSnapped(true);
     else setIsSnapped(false);
   }
 
   const handleSnapToFloor = () => {
-    setObjHeight(getFloorHeight(angle, shape));
+    setObjHeight(getFloorHeight());
     setIsSnapped(true);
   }
 
   const handleShapeChange = (newShape) => {
     setShape(newShape);
-    const newH = getFloorHeight(angle, newShape);
-    setObjHeight(newH);
+    setObjHeight(getFloorHeight());
     setIsSnapped(true);
   }
 
@@ -105,6 +102,10 @@ export default function App() {
     }
     return lines;
   }
+
+  // 삼각뿔 전용 스케일 및 반지름 계산
+  const pyramidR = rectW / Math.sqrt(3);
+  const pyramidScaleZ = rectH / (1.5 * pyramidR);
 
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#f1f2f6', color: '#2f3542', fontFamily: 'sans-serif' }}>
@@ -190,12 +191,22 @@ export default function App() {
           )}
           {is3D && (
             <group>
-              {/* 모든 입체도형이 밑면 모서리를 기준으로 회전하도록 개별 position 적용 */}
               {shape === 'cylinder' && <mesh castShadow position={[0, solidHeight/2, -circleRad]}><cylinderGeometry args={[circleRad, circleRad, solidHeight, 32]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
               {shape === 'box' && <mesh castShadow position={[0, solidHeight/2, -rectH/2]}><boxGeometry args={[rectW, solidHeight, rectH]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
               {shape === 'cone' && <mesh castShadow position={[0, solidHeight/2, -circleRad]}><coneGeometry args={[circleRad, solidHeight, 32]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
-              {/* 삼각뿔: 평평한 면이 기준축(Z=0)에 오고 뾰족한 쪽이 위로 들리도록 회전 및 배치 */}
-              {shape === 'pyramid' && <mesh castShadow position={[0, solidHeight/2, -(rectW/1.5)/2]} rotation={[0, Math.PI, 0]}><coneGeometry args={[rectW / 1.5, solidHeight, 3]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
+              
+              {/* Z-Scale 및 포지션 조정을 적용한 삼각뿔 */}
+              {shape === 'pyramid' && (
+                <mesh 
+                  castShadow 
+                  position={[0, solidHeight / 2, -rectH / 3]} 
+                  rotation={[0, Math.PI, 0]} 
+                  scale={[1, 1, pyramidScaleZ]}
+                >
+                  <coneGeometry args={[pyramidR, solidHeight, 3]} />
+                  <meshStandardMaterial color="#9b59b6" transparent opacity={0.8} />
+                </mesh>
+              )}
             </group>
           )}
         </group>
@@ -212,10 +223,10 @@ export default function App() {
             <Line points={[[0, 0.02, 0], [0, 0.02, -helperLen * cosValue]]} color="#e67e22" lineWidth={5} />
             <Line points={[[0.4, 0.02, 0], [0.4, 0.02, -0.4], [0, 0.02, -0.4]]} color="#e67e22" lineWidth={2.5} />
             
-            {/* 수직 수선 (가장 높은 곳에서 바닥으로) */}
+            {/* 수직 수선 */}
             <Line points={[[0, 0.02, -helperLen * cosValue], [0, objHeight + helperLen * sinValue, -helperLen * cosValue]]} color="#e74c3c" lineWidth={2} dashed />
             
-            {/* 수직선을 나타내는 YZ 평면에서의 직각 표시 */}
+            {/* 직각 표시 */}
             <group position={[0, 0.02, -helperLen * cosValue]}>
                <Line points={[[0, 0.4, 0], [0, 0.4, 0.4], [0, 0, 0.4]]} color="#e74c3c" lineWidth={2.5} />
             </group>
