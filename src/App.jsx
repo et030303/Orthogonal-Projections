@@ -22,6 +22,7 @@ export default function App() {
 
   const is3D = ['cylinder', 'box', 'cone', 'pyramid'].includes(shape)
 
+  // 🎯 바닥 밀착 높이 계산 함수
   const getFloorHeight = (currentAngle, currentShape) => {
     const rad = (currentAngle * Math.PI) / 180;
     if (['cylinder', 'cone'].includes(currentShape)) return circleRad * Math.sin(rad);
@@ -53,6 +54,7 @@ export default function App() {
     setIsSnapped(true);
   }
 
+  // 📐 무리수 표현 및 계산 마무리 로직
   const getCosInfo = (ang) => {
     if (ang === 0) return { text: "1", coeff: 1, suffix: "" };
     if (ang === 30) return { text: "√3/2", coeff: 0.5, suffix: "√3" };
@@ -71,6 +73,7 @@ export default function App() {
     else if (shape === 'circle') { symbol = 'S'; baseVal = Math.pow(circleRad, 2); isPi = true; originalLabel = `${baseVal}π`; formula = `S' = S × cos(θ)`; }
     else if (shape === 'rect') { symbol = 'S'; baseVal = rectW * rectH; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`; }
     else if (shape === 'triangle') { symbol = 'S'; baseVal = (rectW * rectH) / 2; originalLabel = `${baseVal}`; formula = `S' = S × cos(θ)`; }
+    
     step1 = `${originalLabel} × ${cosInfo.text}`;
     const finalCoeff = baseVal * cosInfo.coeff;
     step2 = `${finalCoeff === 1 && cosInfo.suffix ? "" : finalCoeff}${cosInfo.suffix}${isPi ? "π" : ""}`;
@@ -108,9 +111,8 @@ export default function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#f1f2f6', color: '#2f3542', fontFamily: 'sans-serif' }}>
       
-      {/* UI 패널 (기존과 동일) */}
       <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.95)', padding: '20px', borderRadius: '15px', minWidth: '360px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}>
-        <h2 style={{ marginTop: 0, color: '#2980b9', fontSize: '20px' }}>📘 정사영 & 이면각 실험실 by ET</h2>
+        <h2 style={{ marginTop: 0, color: '#2980b9', fontSize: '20px' }}>📘 정사영 실험실 (수직투영 모드)</h2>
         
         <div style={{ marginBottom: '15px' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>1. 도형 선택</p>
@@ -139,7 +141,7 @@ export default function App() {
         <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: isSnapped ? '#e3f2fd' : '#f8f9fa', borderRadius: '10px', border: isSnapped ? '1px solid #2196f3' : '1px solid #dfe4ea' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#57606f', fontWeight: 'bold' }}>
             3. 부양 높이 조절: <span style={{color:'#2980b9'}}>{objHeight.toFixed(2)}</span>
-            {isSnapped && <span style={{marginLeft: '10px', fontSize: '11px', color: '#2196f3'}}> (자동 접점 보정 중)</span>}
+            {isSnapped && <span style={{marginLeft: '10px', fontSize: '11px', color: '#2196f3'}}> (자동 접점 보정)</span>}
           </p>
           <input type="range" min="0" max="10" step="0.1" value={objHeight} onChange={(e) => handleHeightChange(Number(e.target.value))} style={{ width: '100%', marginBottom: '10px', accentColor: '#27ae60' }} />
           <button onClick={handleSnapToFloor} style={{ width: '100%', padding: '10px', backgroundColor: '#f39c12', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', color: 'white' }}>👇 바닥에 밀착시키기</button>
@@ -173,23 +175,28 @@ export default function App() {
 
       <Canvas shadows camera={{ position: [12, 12, 15], fov: 45 }}>
         <color attach="background" args={['#f1f2f6']} />
-        <ambientLight intensity={0.6} />
+        <ambientLight intensity={0.5} />
         
-        {/* 🔥 [그림자 수정] 영역 확대 및 해상도 상향 */}
+        {/* 🔥 수직 광원 설정: x=0, z=0 위치에서 정수직 하강 */}
         <directionalLight 
-          position={[10, 20, 10]} 
-          intensity={1.8} 
+          position={[0, 30, 0]} 
+          intensity={2.2} 
           castShadow 
-          shadow-mapSize={[2048, 2048]} // 해상도 업
+          shadow-mapSize={[4096, 4096]} // 그림자 해상도를 최대치로
         >
           <orthographicCamera 
             attach="shadow-camera" 
-            args={[-25, 25, 25, -25, 0.5, 50]} // 그림자가 맺히는 박스 영역을 크게 넓힘
+            args={[-30, 30, 30, -30, 0.1, 60]} // 그림자 영역을 아주 넉넉하게 설정
           />
         </directionalLight>
 
         <OrbitControls target={[0, 0, 0]} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[100, 100]} /><meshStandardMaterial color="#dfe4ea" /></mesh>
+        
+        {/* 바닥면 (그림자 수신기) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[100, 100]} />
+          <meshStandardMaterial color="#dfe4ea" />
+        </mesh>
         <gridHelper args={[50, 50, '#a4b0be', '#ced6e0']} />
         
         <group position={[0, objHeight, 0]} rotation={[angleRad, 0, 0]}>
