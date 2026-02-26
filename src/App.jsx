@@ -237,7 +237,7 @@ export default function App() {
             ))}
             
             {/* 각도 텍스트 */}
-            {angle > 0 && (
+            {angle > 0 && isSnapped && (
               <group>
                 <Line points={Array.from({length:20}, (_,i)=> [0, objHeight + 2.5*Math.sin((i/19)*angleRad), -2.5*Math.cos((i/19)*angleRad)])} color="#d35400" lineWidth={4} />
                 <Html position={[0, objHeight + 3 * Math.sin(angleRad/2), -3 * Math.cos(angleRad/2)]} center>
