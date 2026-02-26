@@ -23,11 +23,8 @@ export default function App() {
 
   const is3D = ['cylinder', 'box', 'cone', 'pyramid'].includes(shape)
 
-  // 바닥 밀착 높이 계산 (회전축이 밑면 모서리에 있도록 보정)
+  // 바닥 밀착 높이 계산 (이제 3D 도형들도 모서리가 축이 되므로 들뜸 보정 없이 0.01로 고정 가능)
   const getFloorHeight = (currentAngle, currentShape) => {
-    const rad = (currentAngle * Math.PI) / 180;
-    if (['cylinder', 'cone'].includes(currentShape)) return circleRad * Math.sin(rad);
-    if (['box', 'pyramid'].includes(currentShape)) return (rectH / 2) * Math.sin(rad);
     return 0.01;
   }
 
@@ -61,7 +58,7 @@ export default function App() {
     if (ang === 30) return { text: "√3/2", coeff: 0.5, suffix: "√3" };
     if (ang === 45) return { text: "√2/2", coeff: 0.5, suffix: "√2" };
     if (ang === 60) return { text: "1/2", coeff: 0.5, suffix: "" };
-    if (ang === 90) return { text: "0", coeff: 0, suffix: "" };
+    if (ang === 90) return return { text: "0", coeff: 0, suffix: "" };
     return { text: Math.cos((ang * Math.PI) / 180).toFixed(3), coeff: Math.cos((ang * Math.PI) / 180), suffix: "" };
   }
 
@@ -162,8 +159,9 @@ export default function App() {
 
         {!is3D && (
           <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '10px', borderLeft: '5px solid #3498db', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '5px' }}>정사영 계산 과정 ({symbol}')</div>
-            <div style={{ fontSize: '14px', color: '#2c3e50' }}>{step1}</div>
+            <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '5px' }}>정사영 계산 과정</div>
+            <div style={{ fontSize: '15px', color: '#2980b9', fontWeight: 'bold', marginBottom: '8px' }}>공식: {formula}</div>
+            <div style={{ fontSize: '14px', color: '#2c3e50' }}>{symbol}' = {step1}</div>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e67e22', margin: '4px 0' }}>= {step2}</div>
             <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#27ae60', borderTop: '1px solid #eee', paddingTop: '4px' }}>≈ {approxResult}</div>
           </div>
@@ -191,14 +189,14 @@ export default function App() {
             </group>
           )}
           {is3D && (
-            <mesh castShadow position={[0, solidHeight/2, -rectH/2]} >
-              <group position={[0, 0, rectH/2]}> {/* 회전축 보정용 그룹 */}
-                {shape === 'cylinder' && <mesh castShadow><cylinderGeometry args={[circleRad, circleRad, solidHeight, 32]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
-                {shape === 'box' && <mesh castShadow><boxGeometry args={[rectW, solidHeight, rectH]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
-                {shape === 'cone' && <mesh castShadow><coneGeometry args={[circleRad, solidHeight, 32]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
-                {shape === 'pyramid' && <mesh castShadow><coneGeometry args={[rectW / 1.5, solidHeight, 3]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
-              </group>
-            </mesh>
+            <group>
+              {/* 모든 입체도형이 밑면 모서리를 기준으로 회전하도록 개별 position 적용 */}
+              {shape === 'cylinder' && <mesh castShadow position={[0, solidHeight/2, -circleRad]}><cylinderGeometry args={[circleRad, circleRad, solidHeight, 32]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
+              {shape === 'box' && <mesh castShadow position={[0, solidHeight/2, -rectH/2]}><boxGeometry args={[rectW, solidHeight, rectH]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
+              {shape === 'cone' && <mesh castShadow position={[0, solidHeight/2, -circleRad]}><coneGeometry args={[circleRad, solidHeight, 32]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
+              {/* 삼각뿔: 평평한 면이 기준축(Z=0)에 오고 뾰족한 쪽이 위로 들리도록 회전 및 배치 */}
+              {shape === 'pyramid' && <mesh castShadow position={[0, solidHeight/2, -(rectW/1.5)/2]} rotation={[0, Math.PI, 0]}><coneGeometry args={[rectW / 1.5, solidHeight, 3]} /><meshStandardMaterial color="#9b59b6" transparent opacity={0.8} /></mesh>}
+            </group>
           )}
         </group>
 
@@ -209,18 +207,24 @@ export default function App() {
               <Line points={[[0, 0.05, 0], [0, 0.05, -helperLen]]} color="#27ae60" lineWidth={5} />
               <Line points={[[0.4, 0.05, 0], [0.4, 0.05, -0.4], [0, 0.05, -0.4]]} color="#27ae60" lineWidth={2.5} />
             </group>
+            
             {/* 정사영 보조선 (주황색) */}
             <Line points={[[0, 0.02, 0], [0, 0.02, -helperLen * cosValue]]} color="#e67e22" lineWidth={5} />
             <Line points={[[0.4, 0.02, 0], [0.4, 0.02, -0.4], [0, 0.02, -0.4]]} color="#e67e22" lineWidth={2.5} />
-            {/* 수직 수선 및 직각 표시 */}
+            
+            {/* 수직 수선 (가장 높은 곳에서 바닥으로) */}
             <Line points={[[0, 0.02, -helperLen * cosValue], [0, objHeight + helperLen * sinValue, -helperLen * cosValue]]} color="#e74c3c" lineWidth={2} dashed />
-            <group position={[0, 0, -helperLen * cosValue]}>
-               <Line points={[[0, 0.02, 0.4], [0.4, 0.02, 0.4], [0.4, 0.02, 0]]} color="#e74c3c" lineWidth={2.5} />
+            
+            {/* 수직선을 나타내는 YZ 평면에서의 직각 표시 */}
+            <group position={[0, 0.02, -helperLen * cosValue]}>
+               <Line points={[[0, 0.4, 0], [0, 0.4, 0.4], [0, 0, 0.4]]} color="#e74c3c" lineWidth={2.5} />
             </group>
+
             {/* 투영 가이드 점선 */}
             {getProjectionLines().map((pts, idx) => (
               <Line key={idx} points={pts} color="#2f3542" lineWidth={1.2} dashed dashSize={0.2} gapSize={0.15} />
             ))}
+            
             {/* 각도 텍스트 */}
             {angle > 0 && (
               <group>
